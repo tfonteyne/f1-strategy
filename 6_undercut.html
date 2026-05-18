@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The undercut</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<style>
+:root {
+  --bg: #FAFAF7;
+  --surface: #FFFFFF;
+  --text: #1A1A1A;
+  --muted: #5F5E5A;
+  --border: rgba(0,0,0,0.08);
+  --soft: #E24B4A;
+  --soft-bg: #FCEBEB;
+  --soft-dark: #791F1F;
+  --medium: #888780;
+  --medium-bg: #F1EFE8;
+  --medium-dark: #444441;
+  --hard: #185FA5;
+  --hard-bg: #E6F1FB;
+  --hard-dark: #042C53;
+  --fuel: #BA7517;
+  --fuel-bg: #FAEEDA;
+  --good: #0F6E56;
+  --good-bg: #E1F5EE;
+  --accent: #534AB7;
+  --accent-bg: #EEEDFE;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 32px 24px;
+  line-height: 1.5;
+}
+.wrap { max-width: 960px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 500; margin: 0 0 6px; }
+.sub { font-size: 14px; color: var(--muted); margin: 0 0 24px; max-width: 760px; }
+
+.card {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 0.5px solid var(--border);
+  padding: 20px;
+}
+.chart-box { position: relative; height: 440px; }
+.axis-hint {
+  font-size: 11px; color: var(--muted);
+  text-align: center;
+  margin-bottom: 4px;
+  font-style: italic;
+}
+
+/* Story strip showing the through-line */
+.story-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.story-strip .step {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: transparent;
+  flex-shrink: 0;
+}
+.story-strip .step.current {
+  background: var(--text);
+  color: white;
+  font-weight: 500;
+}
+.story-strip .step.done {
+  background: var(--medium-bg);
+  color: var(--text);
+}
+.story-strip .arrow { color: rgba(0,0,0,0.2); flex-shrink: 0; font-size: 10px; }
+
+/* Common annotation row */
+.annotations-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.anno {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--medium-bg);
+  font-size: 13px;
+  color: var(--muted);
+}
+.anno strong { color: var(--text); font-weight: 500; display: block; margin-bottom: 2px; font-size: 13px; }
+
+/* Buttons (segmented) */
+.controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px; padding-bottom: 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+.ctrl-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.ctrl-btn {
+  border: 0.5px solid rgba(0,0,0,0.15);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ctrl-btn:hover { background: rgba(0,0,0,0.04); }
+.ctrl-btn.active { background: var(--text); color: white; border-color: var(--text); }
+
+.legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  margin-top: 18px; padding-top: 14px;
+  border-top: 0.5px solid var(--border);
+  font-size: 13px;
+}
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.swatch { width: 16px; height: 3px; border-radius: 2px; }
+.swatch.dashed { background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 8px); }
+
+.takeaway-pill {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 13px;
+  border-left: 3px solid var(--accent);
+}
+.takeaway-pill strong { color: var(--accent); font-weight: 500; }
+
+
+.nav { max-width: 960px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border-radius: 12px; border: 0.5px solid var(--border); }
+.nav-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 0.5px solid rgba(0,0,0,0.15); background: transparent; color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; text-decoration: none; transition: background 0.12s; white-space: nowrap; }
+.nav-btn:hover { background: rgba(0,0,0,0.04); }
+.nav-btn[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
+.nav-title { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.nav-title .count { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+.nav-title .name { font-size: 14px; font-weight: 500; }
+.nav-dots { display: flex; gap: 6px; margin-right: 4px; }
+.nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,0.15); transition: background 0.12s; }
+.nav-dot:hover { background: rgba(0,0,0,0.35); }
+.nav-dot.active { background: var(--text); }
+@media (max-width: 600px) { .nav-btn .label { display: none; } .nav-dots { display: none; } }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav" aria-label="Slides">
+  <a class="nav-btn" href="5_monte_carlo.html"  title="Vorige (←)"><span aria-hidden="true">←</span><span class="label">Vorige</span></a>
+  <div class="nav-title">
+    <span class="count">6 van 8</span>
+    <span class="name">De undercut</span>
+  </div>
+  <div class="nav-dots"><a href="1_base_lap_time.html" class="nav-dot" title="Basis rondetijd"></a><a href="2_tyre_curves.html" class="nav-dot" title="Bandencurves"></a><a href="3_strategy_shape.html" class="nav-dot" title="Strategievorm"></a><a href="4_clear_air_simulation.html" class="nav-dot" title="Clean-air simulatie"></a><a href="5_monte_carlo.html" class="nav-dot" title="Monte Carlo"></a><a href="6_undercut.html" class="nav-dot active" title="De undercut"></a><a href="7_cover_off.html" class="nav-dot" title="De cover-off"></a><a href="8_full_race_gapper.html" class="nav-dot" title="Volledige race gapper"></a></div>
+  <a class="nav-btn" href="7_cover_off.html"  title="Volgende (→)"><span class="label">Volgende</span><span aria-hidden="true">→</span></a>
+</nav>
+<div class="story-strip">
+<span class="step done">Rondetijd</span>
+<span class="arrow">▸</span>
+<span class="step done">Banden</span>
+<span class="arrow">▸</span>
+<span class="step done">Hoeveel stops?</span>
+<span class="arrow">▸</span>
+<span class="step done">Welke ronde?</span>
+<span class="arrow">▸</span>
+<span class="step done">Plan A</span>
+<span class="arrow">▸</span>
+<span class="step current">Aanval</span>
+<span class="arrow">▸</span>
+<span class="step">Verdediging</span>
+<span class="arrow">▸</span>
+<span class="step">Volle race</span>
+</div>
+
+<h1>Wedstrijddag — de undercut</h1>
+<p class="sub">Lichten uit. We staan P2, ~0,7s achter P1 (rood). Beiden op soft. Onze Monte Carlo zei Plan A = L20 (één ronde vroeger dan het clean-air optimum). Maar we gokken dat de rival nog vasthoudt aan het clean-air L21, of misschien zelf op L20 zit. Op de wedstrijddag besluiten we om <em>nóg een ronde vroeger</em> te pitten, op L19 — een aggressievere undercut dan Plan A. Dat kost ons ~1s aan ideale strategietijd, maar als het lukt pakken we de positie.</p>
+
+<div class="card">
+  <div class="controls">
+    <span class="ctrl-label">Scenario:</span>
+    <button class="ctrl-btn active" data-mode="clean">Clean air (theorie)</button>
+    <button class="ctrl-btn" data-mode="traffic">Met dirty air (realiteit)</button>
+  </div>
+
+  <div class="axis-hint">↑ vóór in de race · pit stops doen de lijn dalen (~22s pit loss) · ↓ achter</div>
+  <div class="chart-box"><canvas id="chart"></canvas></div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch" style="background: var(--hard);"></span><span>Wij (blauw), pit L19</span></div>
+    <div class="legend-item"><span class="swatch" style="background: var(--soft);"></span><span>Rival (rood), pit L20</span></div>
+    <div class="legend-item"><span class="swatch dashed" style="color: rgba(226,75,74,0.6);"></span><span>Rival, clean-air projectie</span></div>
+  </div>
+
+  <div class="annotations-row">
+    <div class="anno"><strong>Ronden 1–18</strong>We zitten 0,7s achter, ophouden van positie</div>
+    <div class="anno"><strong>Ronde 19: wij pitten</strong>~22s pit loss. Op verse hards.</div>
+    <div class="anno"><strong>Ronde 20: rival pit</strong>Zij verliezen ook ~22s. Wij hadden al één vliegende ronde op vers rubber tegen hun ronde op een uitgeleefde soft.</div>
+    <div class="anno"><strong>Vanaf L21 zijn wij P1</strong>Gap flipt van −0,7s naar +0,55s. We hebben de positie gepakt.</div>
+    <div class="anno"><strong>Theorie (clean air)</strong>Rival heeft 1 ronde versere banden — komt op papier voorbij rond L55</div>
+    <div class="anno"><strong>Realiteit (dirty air)</strong>Vast achter ons. Hun pace-voordeel kan niet vertaald worden in een inhaalbeurt. Gap parkeert.</div>
+  </div>
+
+  <div class="takeaway-pill"><strong>Undercut werkt. We staan P1.</strong> Aggressiever dan Plan A — een gok die loont. Eens we op de baan vóór staan houdt dirty air ons daar.</div>
+</div>
+
+<div class="card" style="margin-top: 18px;">
+  <h2 style="font-size: 17px; font-weight: 500; margin: 0 0 4px 0; letter-spacing: -0.01em;">Detail: het undercut-moment, ronde-per-ronde</h2>
+  <p class="sub" style="margin-top: 0;">Inzoomen op ronden 17 tot 23. De gap tussen ons (blauw) en rival (rood) wordt aangegeven bij elke ronde — let op de exacte volgorde van gebeurtenissen.</p>
+
+  <div class="chart-box" style="height: 360px;"><canvas id="detailChart"></canvas></div>
+
+  <div class="annotations-row" style="margin-top: 12px;">
+    <div class="anno"><strong>L17–L18: −0,7s</strong>We zitten 0,7s achter, geparkeerd op positie</div>
+    <div class="anno"><strong>L19: wij pitten</strong>Onze lijn duikt 22s omlaag. Rival rijdt door op uitgeleefde soft.</div>
+    <div class="anno"><strong>L20 (eerste helft): wij liggen vóór op verse hards</strong>We rijden ~1,5s sneller dan een rival op een soft die net over zijn levensduur is</div>
+    <div class="anno"><strong>L20 (rival pit): zij verliezen ook 22s</strong>Maar wij hadden al die ene vliegende ronde voorsprong</div>
+    <div class="anno"><strong>L21: gap is +0,4s, wij vóór</strong>Volledig geflipt van −0,7 naar +0,4. Positie gepakt.</div>
+  </div>
+</div>
+</div>
+
+<script>
+// ============================================================
+// SHARED RACE MODEL — used by all pages so visuals stay consistent
+// ============================================================
+//
+// Worked example throughout:
+//   - 55-lap dry race
+//   - Two compounds: soft and hard
+//   - Our car ("blue") runs one-stop soft → hard
+//   - Clear-air optimum (page 4): stop on lap 21
+//   - Monte Carlo Plan A (page 5): stop on lap 21 (with L19-L22 robust range)
+//   - Race-day undercut (page 6): stop on lap 20 — one lap earlier than rival's plan
+//   - Cover-off (page 7): we copy a 2-stop rival, second stop on lap 40
+//   - Rival starts 0.7s ahead of us
+// ============================================================
+
+const RACE = {
+  LAPS: 55,
+  PIT_LOSS: 22.0,
+  BASE_DRY_LAP: 88.0,
+  FUEL_KG_AT_START: 110,
+  FUEL_SEC_PER_KG: 0.035,
+  REFERENCE_LAP: 90.0,
+
+  COMPOUNDS: {
+    soft: { baseOffset: -1.0, deg: 0.10, life: 19, cliff: 0.40, color: '#E24B4A' },
+    hard: { baseOffset:  0.2, deg: 0.04, life: 33, cliff: 0.40, color: '#185FA5' }
+  },
+
+  // Narrative numbers used across pages
+  CLEAR_AIR_OPTIMAL_STOP: 21,
+  PLAN_A_STOP: 21,
+  ACTUAL_STOP_OUR_CAR: 20,
+  RIVAL_STOP: 21,
+  RIVAL_HEAD_START: 0.7,
+  SECOND_STOP_LAP: 40,  // cover-off scenario second stop
+
+  COLOURS: {
+    soft:   '#E24B4A',
+    hard:   '#185FA5',
+    fuel:   '#BA7517',
+    base:   '#5F5E5A',
+    ourCar: '#185FA5',
+    rival:  '#E24B4A',
+    text:   '#1A1A1A',
+    muted:  '#5F5E5A',
+    accent: '#534AB7',
+    good:   '#0F6E56'
+  }
+};
+
+function fuelKgAtLap(lap) {
+  const burnPerLap = RACE.FUEL_KG_AT_START / RACE.LAPS;
+  return Math.max(0, RACE.FUEL_KG_AT_START - (lap - 1) * burnPerLap);
+}
+
+function fuelPenaltyAtLap(lap) {
+  const burnPerLap = RACE.FUEL_KG_AT_START / RACE.LAPS;
+  const kg = Math.max(0, RACE.FUEL_KG_AT_START - (lap - 0.5) * burnPerLap);
+  return kg * RACE.FUEL_SEC_PER_KG;
+}
+
+function tyrePenalty(compound, stintLap) {
+  const c = RACE.COMPOUNDS[compound];
+  let t = c.baseOffset + c.deg * (stintLap - 1);
+  if (stintLap > c.life) t += c.cliff * (stintLap - c.life);
+  return t;
+}
+
+function lapTimeForStrategy(raceLap, strategy) {
+  let remaining = raceLap;
+  for (const stint of strategy) {
+    if (remaining <= stint.length) {
+      return RACE.BASE_DRY_LAP + fuelPenaltyAtLap(raceLap) + tyrePenalty(stint.compound, remaining);
+    }
+    remaining -= stint.length;
+  }
+  const last = strategy[strategy.length - 1];
+  return RACE.BASE_DRY_LAP + fuelPenaltyAtLap(raceLap) + tyrePenalty(last.compound, remaining + last.length);
+}
+
+function cumulativeTime(raceLap, strategy, stopLaps) {
+  let t = 0;
+  for (let L = 1; L <= raceLap; L++) {
+    t += lapTimeForStrategy(L, strategy);
+    if (stopLaps.includes(L)) t += RACE.PIT_LOSS;
+  }
+  return t;
+}
+
+function gapToReference(raceLap, strategy, stopLaps) {
+  return raceLap * RACE.REFERENCE_LAP - cumulativeTime(raceLap, strategy, stopLaps);
+}
+
+function buildTwoStintStrategy(stopLap, c1, c2) {
+  return [
+    { compound: c1, length: stopLap },
+    { compound: c2, length: RACE.LAPS - stopLap }
+  ];
+}
+
+function buildThreeStintStrategy(stop1, stop2, c1, c2, c3) {
+  return [
+    { compound: c1, length: stop1 },
+    { compound: c2, length: stop2 - stop1 },
+    { compound: c3, length: RACE.LAPS - stop2 }
+  ];
+}
+
+</script>
+
+<script>
+
+const ourStrategy = buildTwoStintStrategy(19, 'soft', 'hard');
+const rivalStrategy = buildTwoStintStrategy(20, 'soft', 'hard');
+const RIVAL_HEAD_START = RACE.RIVAL_HEAD_START;
+
+// Dirty-air model: when rival is close behind us (gap 0 to ~2s),
+// their effective lap is capped to our pace + 0.05s. Gap parks.
+function buildSeries(mode) {
+  const ourData = [];
+  const rivalData = [];
+  const rivalCleanProjection = [];
+  let ourCum = 0;
+  let rivalCum = -RIVAL_HEAD_START;
+  let rivalCleanCum = -RIVAL_HEAD_START;
+
+  for (let L = 1; L <= RACE.LAPS; L++) {
+    const ourLap = lapTimeForStrategy(L, ourStrategy);
+    const rivalLapTheoretical = lapTimeForStrategy(L, rivalStrategy);
+    let rivalLapEffective = rivalLapTheoretical;
+
+    if (mode === 'traffic' && L >= 21) {
+      const rivalBehind = rivalCum > ourCum;
+      if (rivalBehind) {
+        const gap = rivalCum - ourCum;
+        if (gap < 2.0) {
+          // Dirty-air drag: rival can't run their pace, loses ~0.20s/lap stuck behind us
+          rivalLapEffective = Math.max(rivalLapTheoretical, ourLap + 0.20);
+        }
+      }
+    }
+
+    ourCum += ourLap;
+    rivalCum += rivalLapEffective;
+    rivalCleanCum += rivalLapTheoretical;
+    if (L === 19) ourCum += RACE.PIT_LOSS;
+    if (L === 20) { rivalCum += RACE.PIT_LOSS; rivalCleanCum += RACE.PIT_LOSS; }
+
+    const ref = L * RACE.REFERENCE_LAP;
+    ourData.push({ x: L, y: +(ref - ourCum).toFixed(2) });
+    rivalData.push({ x: L, y: +(ref - rivalCum).toFixed(2) });
+    rivalCleanProjection.push({ x: L, y: +(ref - rivalCleanCum).toFixed(2) });
+  }
+  return { ourData, rivalData, rivalCleanProjection };
+}
+
+const clean = buildSeries('clean');
+const traffic = buildSeries('traffic');
+
+const ctx = document.getElementById('chart');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    datasets: [
+      { label: 'Wij', data: clean.ourData, borderColor: '#185FA5', borderWidth: 2.5, tension: 0, pointRadius: 0, fill: false },
+      { label: 'Rival', data: clean.rivalData, borderColor: '#E24B4A', borderWidth: 2.5, tension: 0, pointRadius: 0, fill: false },
+      { label: 'Rival, clean air', data: [], borderColor: 'rgba(226,75,74,0.5)', borderWidth: 1.5, borderDash: [5, 4], tension: 0, pointRadius: 0, fill: false, hidden: true }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    parsing: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y > 0 ? '+' : ''}${c.parsed.y.toFixed(1)}s` } },
+      annotation: {
+        annotations: {
+          ourPit: {
+            type: 'line', xMin: 19, xMax: 19,
+            borderColor: 'rgba(24,95,165,0.35)', borderWidth: 1, borderDash: [3, 3],
+            label: { display: true, content: 'Wij pitten (L19)', position: 'start', color: '#042C53', backgroundColor: 'rgba(230,241,251,0.95)', font: { size: 10 } }
+          },
+          rivalPit: {
+            type: 'line', xMin: 20, xMax: 20,
+            borderColor: 'rgba(226,75,74,0.35)', borderWidth: 1, borderDash: [3, 3],
+            label: { display: true, content: 'Rival pit (L20)', position: 'end', color: '#791F1F', backgroundColor: 'rgba(252,235,235,0.95)', font: { size: 10 } }
+          },
+          pitLossLabel: {
+            type: 'label',
+            xValue: 19, yValue: -11,
+            content: ['~22s pit loss'],
+            color: '#5F5E5A',
+            font: { size: 11, weight: '500' },
+            backgroundColor: 'rgba(255,255,255,0.9)',
+            padding: { top: 3, bottom: 3, left: 6, right: 6 },
+            borderRadius: 3
+          }
+        }
+      }
+    },
+    scales: {
+      x: { type: 'linear', title: { display: true, text: 'Race ronde', color: '#5F5E5A' }, min: 1, max: RACE.LAPS, ticks: { color: '#5F5E5A', stepSize: 5 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+      y: { title: { display: true, text: 'Tijd t.o.v. referentie (s) — hoger = vóór', color: '#5F5E5A' }, ticks: { color: '#5F5E5A', callback: v => (v > 0 ? '+' : '') + v + 's' }, grid: { color: 'rgba(0,0,0,0.04)' } }
+    }
+  }
+});
+
+// ============ DETAIL CHART (L17-L23 zoom) ============
+// Filter clean-air series to the detail window
+function filterRange(series, lo, hi) {
+  return series.filter(pt => pt.x >= lo && pt.x <= hi);
+}
+const detailOurClean = filterRange(clean.ourData, 17, 23);
+const detailRivalClean = filterRange(clean.rivalData, 17, 23);
+const detailOurTraffic = filterRange(traffic.ourData, 17, 23);
+const detailRivalTraffic = filterRange(traffic.rivalData, 17, 23);
+
+// Build gap labels at each integer lap: gap = rival - us (positive = we ahead)
+function gapLabelsFor(ourData, rivalData) {
+  const out = {};
+  for (let L = 17; L <= 23; L++) {
+    const ourPts = ourData.filter(p => p.x === L);
+    const rivPts = rivalData.filter(p => p.x === L);
+    if (ourPts.length === 0 || rivPts.length === 0) continue;
+    // Use the LAST point at each lap (post-pit values)
+    const ourY = ourPts[ourPts.length - 1].y;
+    const rivY = rivPts[rivPts.length - 1].y;
+    const gap = ourY - rivY;  // positive = we ahead in race
+    const sign = gap >= 0 ? '+' : '';
+    // Position the label above the higher line at this lap (so it doesn't overlap)
+    const midY = (ourY + rivY) / 2;
+    out['gap' + L] = {
+      type: 'label',
+      xValue: L,
+      yValue: midY,
+      content: [sign + gap.toFixed(1) + 's'],
+      color: gap >= 0 ? '#0F6E56' : '#791F1F',
+      font: { size: 11, weight: '600' },
+      backgroundColor: 'rgba(255,255,255,0.92)',
+      borderColor: gap >= 0 ? 'rgba(15,110,86,0.3)' : 'rgba(121,31,31,0.3)',
+      borderWidth: 1,
+      padding: { top: 2, bottom: 2, left: 5, right: 5 },
+      borderRadius: 3
+    };
+  }
+  return out;
+}
+
+const detailCtx = document.getElementById('detailChart');
+const detailChart = new Chart(detailCtx, {
+  type: 'line',
+  data: {
+    datasets: [
+      { label: 'Wij', data: detailOurClean, borderColor: '#185FA5', borderWidth: 3, tension: 0, pointRadius: 3, pointBackgroundColor: '#185FA5', fill: false },
+      { label: 'Rival', data: detailRivalClean, borderColor: '#E24B4A', borderWidth: 3, tension: 0, pointRadius: 3, pointBackgroundColor: '#E24B4A', fill: false }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    parsing: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y > 0 ? '+' : ''}${c.parsed.y.toFixed(1)}s` } },
+      annotation: {
+        annotations: Object.assign({
+          ourPit: {
+            type: 'line', xMin: 19, xMax: 19,
+            borderColor: 'rgba(24,95,165,0.35)', borderWidth: 1, borderDash: [3, 3],
+            label: { display: true, content: 'Wij pit', position: 'start', color: '#042C53', backgroundColor: 'rgba(230,241,251,0.95)', font: { size: 10 } }
+          },
+          rivalPit: {
+            type: 'line', xMin: 20, xMax: 20,
+            borderColor: 'rgba(226,75,74,0.35)', borderWidth: 1, borderDash: [3, 3],
+            label: { display: true, content: 'Rival pit', position: 'start', color: '#791F1F', backgroundColor: 'rgba(252,235,235,0.95)', font: { size: 10 } }
+          }
+        }, gapLabelsFor(detailOurClean, detailRivalClean))
+      }
+    },
+    scales: {
+      x: { type: 'linear', title: { display: true, text: 'Race ronde', color: '#5F5E5A' }, min: 17, max: 23, ticks: { color: '#5F5E5A', stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+      y: { title: { display: true, text: 'Tijd t.o.v. referentie (s)', color: '#5F5E5A' }, ticks: { color: '#5F5E5A', callback: v => (v > 0 ? '+' : '') + v + 's' }, grid: { color: 'rgba(0,0,0,0.04)' } }
+    }
+  }
+});
+
+function setMode(mode) {
+  if (mode === 'clean') {
+    chart.data.datasets[0].data = clean.ourData;
+    chart.data.datasets[1].data = clean.rivalData;
+    chart.data.datasets[2].hidden = true;
+  } else {
+    chart.data.datasets[0].data = traffic.ourData;
+    chart.data.datasets[1].data = traffic.rivalData;
+    chart.data.datasets[2].data = traffic.rivalCleanProjection;
+    chart.data.datasets[2].hidden = false;
+  }
+  chart.update();
+
+  // Update detail chart separately (wrapped in try so any annotation issue doesn't block main chart)
+  try {
+    const ourD = (mode === 'clean') ? detailOurClean : detailOurTraffic;
+    const rivD = (mode === 'clean') ? detailRivalClean : detailRivalTraffic;
+    detailChart.data.datasets[0].data = ourD;
+    detailChart.data.datasets[1].data = rivD;
+    const newAnno = Object.assign({
+      ourPit: {
+        type: 'line', xMin: 19, xMax: 19,
+        borderColor: 'rgba(24,95,165,0.35)', borderWidth: 1, borderDash: [3, 3],
+        label: { display: true, content: 'Wij pit', position: 'start', color: '#042C53', backgroundColor: 'rgba(230,241,251,0.95)', font: { size: 10 } }
+      },
+      rivalPit: {
+        type: 'line', xMin: 20, xMax: 20,
+        borderColor: 'rgba(226,75,74,0.35)', borderWidth: 1, borderDash: [3, 3],
+        label: { display: true, content: 'Rival pit', position: 'start', color: '#791F1F', backgroundColor: 'rgba(252,235,235,0.95)', font: { size: 10 } }
+      }
+    }, gapLabelsFor(ourD, rivD));
+    detailChart.options.plugins.annotation.annotations = newAnno;
+    detailChart.update();
+  } catch (e) {
+    console.error('Detail chart update failed:', e);
+  }
+}
+
+document.querySelectorAll('.ctrl-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setMode(btn.dataset.mode);
+  });
+});
+
+</script>
+
+<script>
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  var btns = document.querySelectorAll('.nav-btn');
+  if (e.key === 'ArrowLeft') {
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.indexOf('Vorige') !== -1 && !btns[i].hasAttribute('aria-disabled')) { btns[i].click(); return; }
+    }
+  } else if (e.key === 'ArrowRight') {
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.indexOf('Volgende') !== -1 && !btns[i].hasAttribute('aria-disabled')) { btns[i].click(); return; }
+    }
+  }
+});
+</script>
+
+</body>
+</html>

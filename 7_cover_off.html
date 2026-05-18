@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The cover-off</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<style>
+:root {
+  --bg: #FAFAF7;
+  --surface: #FFFFFF;
+  --text: #1A1A1A;
+  --muted: #5F5E5A;
+  --border: rgba(0,0,0,0.08);
+  --soft: #E24B4A;
+  --soft-bg: #FCEBEB;
+  --soft-dark: #791F1F;
+  --medium: #888780;
+  --medium-bg: #F1EFE8;
+  --medium-dark: #444441;
+  --hard: #185FA5;
+  --hard-bg: #E6F1FB;
+  --hard-dark: #042C53;
+  --fuel: #BA7517;
+  --fuel-bg: #FAEEDA;
+  --good: #0F6E56;
+  --good-bg: #E1F5EE;
+  --accent: #534AB7;
+  --accent-bg: #EEEDFE;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 32px 24px;
+  line-height: 1.5;
+}
+.wrap { max-width: 960px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 500; margin: 0 0 6px; }
+.sub { font-size: 14px; color: var(--muted); margin: 0 0 24px; max-width: 760px; }
+
+.card {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 0.5px solid var(--border);
+  padding: 20px;
+}
+.chart-box { position: relative; height: 440px; }
+.axis-hint {
+  font-size: 11px; color: var(--muted);
+  text-align: center;
+  margin-bottom: 4px;
+  font-style: italic;
+}
+
+/* Story strip showing the through-line */
+.story-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.story-strip .step {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: transparent;
+  flex-shrink: 0;
+}
+.story-strip .step.current {
+  background: var(--text);
+  color: white;
+  font-weight: 500;
+}
+.story-strip .step.done {
+  background: var(--medium-bg);
+  color: var(--text);
+}
+.story-strip .arrow { color: rgba(0,0,0,0.2); flex-shrink: 0; font-size: 10px; }
+
+/* Common annotation row */
+.annotations-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.anno {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--medium-bg);
+  font-size: 13px;
+  color: var(--muted);
+}
+.anno strong { color: var(--text); font-weight: 500; display: block; margin-bottom: 2px; font-size: 13px; }
+
+/* Buttons (segmented) */
+.controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px; padding-bottom: 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+.ctrl-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.ctrl-btn {
+  border: 0.5px solid rgba(0,0,0,0.15);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ctrl-btn:hover { background: rgba(0,0,0,0.04); }
+.ctrl-btn.active { background: var(--text); color: white; border-color: var(--text); }
+
+.legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  margin-top: 18px; padding-top: 14px;
+  border-top: 0.5px solid var(--border);
+  font-size: 13px;
+}
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.swatch { width: 16px; height: 3px; border-radius: 2px; }
+.swatch.dashed { background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 8px); }
+
+.takeaway-pill {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 13px;
+  border-left: 3px solid var(--accent);
+}
+.takeaway-pill strong { color: var(--accent); font-weight: 500; }
+
+
+.nav { max-width: 960px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border-radius: 12px; border: 0.5px solid var(--border); }
+.nav-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 0.5px solid rgba(0,0,0,0.15); background: transparent; color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; text-decoration: none; transition: background 0.12s; white-space: nowrap; }
+.nav-btn:hover { background: rgba(0,0,0,0.04); }
+.nav-btn[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
+.nav-title { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.nav-title .count { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+.nav-title .name { font-size: 14px; font-weight: 500; }
+.nav-dots { display: flex; gap: 6px; margin-right: 4px; }
+.nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,0.15); transition: background 0.12s; }
+.nav-dot:hover { background: rgba(0,0,0,0.35); }
+.nav-dot.active { background: var(--text); }
+@media (max-width: 600px) { .nav-btn .label { display: none; } .nav-dots { display: none; } }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav" aria-label="Slides">
+  <a class="nav-btn" href="6_undercut.html"  title="Vorige (←)"><span aria-hidden="true">←</span><span class="label">Vorige</span></a>
+  <div class="nav-title">
+    <span class="count">7 van 8</span>
+    <span class="name">De cover-off</span>
+  </div>
+  <div class="nav-dots"><a href="1_base_lap_time.html" class="nav-dot" title="Basis rondetijd"></a><a href="2_tyre_curves.html" class="nav-dot" title="Bandencurves"></a><a href="3_strategy_shape.html" class="nav-dot" title="Strategievorm"></a><a href="4_clear_air_simulation.html" class="nav-dot" title="Clean-air simulatie"></a><a href="5_monte_carlo.html" class="nav-dot" title="Monte Carlo"></a><a href="6_undercut.html" class="nav-dot" title="De undercut"></a><a href="7_cover_off.html" class="nav-dot active" title="De cover-off"></a><a href="8_full_race_gapper.html" class="nav-dot" title="Volledige race gapper"></a></div>
+  <a class="nav-btn" href="8_full_race_gapper.html"  title="Volgende (→)"><span class="label">Volgende</span><span aria-hidden="true">→</span></a>
+</nav>
+<div class="story-strip">
+<span class="step done">Rondetijd</span>
+<span class="arrow">▸</span>
+<span class="step done">Banden</span>
+<span class="arrow">▸</span>
+<span class="step done">Hoeveel stops?</span>
+<span class="arrow">▸</span>
+<span class="step done">Welke ronde?</span>
+<span class="arrow">▸</span>
+<span class="step done">Plan A</span>
+<span class="arrow">▸</span>
+<span class="step done">Aanval</span>
+<span class="arrow">▸</span>
+<span class="step current">Verdediging</span>
+<span class="arrow">▸</span>
+<span class="step">Volle race</span>
+</div>
+
+<h1>Wedstrijddag — de cover-off</h1>
+<p class="sub">Ronde 40. We leiden, en houden de rival al een tijd vast in dirty air. Plots licht hun pit board op — ze komen binnen voor een tweede stop. Ze converteren naar een two-stop. Verse softs voor 15 ronden betekent ze rijden ~1,5s/ronde sneller. Onze 3-seconden marge smelt weg. Op papier blijft de two-stop trager en houden we het nipt vol. Maar ons bandenmodel is maar een model — wat als de soft slijtage erger is dan we denken, of de hard cliff vroeger toeslaat? Coveren of niet?</p>
+
+<div class="card">
+  <div class="controls">
+    <span class="ctrl-label">Onze reactie:</span>
+    <button class="ctrl-btn active" data-mode="stick">Bij Plan A blijven</button>
+    <button class="ctrl-btn" data-mode="cover">Cover de 2-stop</button>
+  </div>
+
+  <div class="axis-hint">↑ vóór in de race · pit stops doen de lijn dalen · ↓ achter</div>
+  <div class="chart-box"><canvas id="chart"></canvas></div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch" style="background: var(--hard);"></span><span>Wij (blauw)</span></div>
+    <div class="legend-item"><span class="swatch" style="background: var(--soft);"></span><span>Rival (rood), converteert naar 2-stop op L40</span></div>
+  </div>
+
+  <div class="annotations-row">
+    <div class="anno"><strong>Ronde 40: rival pit opnieuw</strong>Verrassing — tweede stop. Ze gaan converteren naar 2-stop op verse softs.</div>
+    <div class="anno"><strong>Als we blijven (op papier)</strong>22s marge zakt ~1,5s/ronde. We winnen met ~1s. Net.</div>
+    <div class="anno"><strong>Risico: modelonzekerheid</strong>Als bandenslijtage 10% erger is dan gemodelleerd, verliezen we. We zetten de race in op het model.</div>
+    <div class="anno"><strong>Als we coveren</strong>Zelfde banden. Ze kunnen ons niet meer pakken, hoe de banden ook reageren. ~3s comfortabel.</div>
+  </div>
+
+  <div class="takeaway-pill"><strong>Cover de move.</strong> Op papier houden we het nipt vol. Maar in een echte race klopt het model nooit helemaal — bij twijfel mirror je de wagen achter je en sluit je de race.</div>
+</div>
+
+</div>
+
+<script>
+// ============================================================
+// SHARED RACE MODEL — used by all pages so visuals stay consistent
+// ============================================================
+//
+// Worked example throughout:
+//   - 55-lap dry race
+//   - Two compounds: soft and hard
+//   - Our car ("blue") runs one-stop soft → hard
+//   - Clear-air optimum (page 4): stop on lap 21
+//   - Monte Carlo Plan A (page 5): stop on lap 21 (with L19-L22 robust range)
+//   - Race-day undercut (page 6): stop on lap 20 — one lap earlier than rival's plan
+//   - Cover-off (page 7): we copy a 2-stop rival, second stop on lap 40
+//   - Rival starts 0.7s ahead of us
+// ============================================================
+
+const RACE = {
+  LAPS: 55,
+  PIT_LOSS: 22.0,
+  BASE_DRY_LAP: 88.0,
+  FUEL_KG_AT_START: 110,
+  FUEL_SEC_PER_KG: 0.035,
+  REFERENCE_LAP: 90.0,
+
+  COMPOUNDS: {
+    soft: { baseOffset: -1.0, deg: 0.10, life: 19, cliff: 0.40, color: '#E24B4A' },
+    hard: { baseOffset:  0.2, deg: 0.04, life: 33, cliff: 0.40, color: '#185FA5' }
+  },
+
+  // Narrative numbers used across pages
+  CLEAR_AIR_OPTIMAL_STOP: 21,
+  PLAN_A_STOP: 21,
+  ACTUAL_STOP_OUR_CAR: 20,
+  RIVAL_STOP: 21,
+  RIVAL_HEAD_START: 0.7,
+  SECOND_STOP_LAP: 40,  // cover-off scenario second stop
+
+  COLOURS: {
+    soft:   '#E24B4A',
+    hard:   '#185FA5',
+    fuel:   '#BA7517',
+    base:   '#5F5E5A',
+    ourCar: '#185FA5',
+    rival:  '#E24B4A',
+    text:   '#1A1A1A',
+    muted:  '#5F5E5A',
+    accent: '#534AB7',
+    good:   '#0F6E56'
+  }
+};
+
+function fuelKgAtLap(lap) {
+  const burnPerLap = RACE.FUEL_KG_AT_START / RACE.LAPS;
+  return Math.max(0, RACE.FUEL_KG_AT_START - (lap - 1) * burnPerLap);
+}
+
+function fuelPenaltyAtLap(lap) {
+  const burnPerLap = RACE.FUEL_KG_AT_START / RACE.LAPS;
+  const kg = Math.max(0, RACE.FUEL_KG_AT_START - (lap - 0.5) * burnPerLap);
+  return kg * RACE.FUEL_SEC_PER_KG;
+}
+
+function tyrePenalty(compound, stintLap) {
+  const c = RACE.COMPOUNDS[compound];
+  let t = c.baseOffset + c.deg * (stintLap - 1);
+  if (stintLap > c.life) t += c.cliff * (stintLap - c.life);
+  return t;
+}
+
+function lapTimeForStrategy(raceLap, strategy) {
+  let remaining = raceLap;
+  for (const stint of strategy) {
+    if (remaining <= stint.length) {
+      return RACE.BASE_DRY_LAP + fuelPenaltyAtLap(raceLap) + tyrePenalty(stint.compound, remaining);
+    }
+    remaining -= stint.length;
+  }
+  const last = strategy[strategy.length - 1];
+  return RACE.BASE_DRY_LAP + fuelPenaltyAtLap(raceLap) + tyrePenalty(last.compound, remaining + last.length);
+}
+
+function cumulativeTime(raceLap, strategy, stopLaps) {
+  let t = 0;
+  for (let L = 1; L <= raceLap; L++) {
+    t += lapTimeForStrategy(L, strategy);
+    if (stopLaps.includes(L)) t += RACE.PIT_LOSS;
+  }
+  return t;
+}
+
+function gapToReference(raceLap, strategy, stopLaps) {
+  return raceLap * RACE.REFERENCE_LAP - cumulativeTime(raceLap, strategy, stopLaps);
+}
+
+function buildTwoStintStrategy(stopLap, c1, c2) {
+  return [
+    { compound: c1, length: stopLap },
+    { compound: c2, length: RACE.LAPS - stopLap }
+  ];
+}
+
+function buildThreeStintStrategy(stop1, stop2, c1, c2, c3) {
+  return [
+    { compound: c1, length: stop1 },
+    { compound: c2, length: stop2 - stop1 },
+    { compound: c3, length: RACE.LAPS - stop2 }
+  ];
+}
+
+</script>
+
+<script>
+
+// Setup: we already undercut on L19 (from page 6). Now lap 40 - rival converts to 2-stop.
+//   STICK: stay on Plan A, one-stop, finish on hard
+//   COVER: pit again on lap 40, fresh softs, mirror the rival
+
+const ourStickStrategy = buildTwoStintStrategy(19, 'soft', 'hard');
+const ourCoverStrategy = buildThreeStintStrategy(19, 40, 'soft', 'hard', 'soft');
+const rivalStrategy = buildThreeStintStrategy(20, 40, 'soft', 'hard', 'soft');
+
+const RIVAL_HEAD_START = RACE.RIVAL_HEAD_START;
+
+// Same dirty-air model as page 6: when rival is close behind us (gap < 2s),
+// they cannot use their pace advantage — gap parks rather than continually growing
+function buildSeries(mode) {
+  const ourStrategy = mode === 'stick' ? ourStickStrategy : ourCoverStrategy;
+  const ourStops = mode === 'stick' ? [19] : [19, 40];
+  const rivalStops = [20, 40];
+
+  const ourData = [];
+  const rivalData = [];
+  let ourCum = 0;
+  let rivalCum = -RIVAL_HEAD_START;
+
+  for (let L = 1; L <= RACE.LAPS; L++) {
+    const ourLap = lapTimeForStrategy(L, ourStrategy);
+    const rivalLapTheoretical = lapTimeForStrategy(L, rivalStrategy);
+    let rivalLapEffective = rivalLapTheoretical;
+
+    // Dirty-air capping (applies whenever rival is behind us within 2s)
+    const rivalBehind = rivalCum > ourCum;
+    if (rivalBehind && L > 20) {
+      const gap = rivalCum - ourCum;
+      if (gap < 2.0) {
+        // Dirty-air drag: rival loses ~0.20s/lap stuck behind us
+        rivalLapEffective = Math.max(rivalLapTheoretical, ourLap + 0.20);
+      }
+    }
+
+    ourCum += ourLap;
+    rivalCum += rivalLapEffective;
+    if (ourStops.includes(L)) ourCum += RACE.PIT_LOSS;
+    if (rivalStops.includes(L)) rivalCum += RACE.PIT_LOSS;
+
+    const ref = L * RACE.REFERENCE_LAP;
+    ourData.push({ x: L, y: +(ref - ourCum).toFixed(2) });
+    rivalData.push({ x: L, y: +(ref - rivalCum).toFixed(2) });
+  }
+  return { ourData, rivalData };
+}
+
+const stick = buildSeries('stick');
+const cover = buildSeries('cover');
+
+const ctx = document.getElementById('chart');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    datasets: [
+      { label: 'Wij', data: stick.ourData, borderColor: '#185FA5', borderWidth: 2.5, tension: 0, pointRadius: 0, fill: false },
+      { label: 'Rival', data: stick.rivalData, borderColor: '#E24B4A', borderWidth: 2.5, tension: 0, pointRadius: 0, fill: false }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    parsing: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y > 0 ? '+' : ''}${c.parsed.y.toFixed(1)}s` } },
+      annotation: {
+        annotations: {
+          ourFirstPit: { type: 'line', xMin: 19, xMax: 19, borderColor: 'rgba(24,95,165,0.25)', borderWidth: 1, borderDash: [3, 3] },
+          rivalFirstPit: { type: 'line', xMin: 20, xMax: 20, borderColor: 'rgba(226,75,74,0.25)', borderWidth: 1, borderDash: [3, 3] },
+          secondStops: { type: 'line', xMin: 40, xMax: 40, borderColor: 'rgba(186,117,23,0.5)', borderWidth: 1.5, borderDash: [4, 4], label: { display: true, content: 'Rival pit opnieuw (L40)', position: 'end', color: '#854F0B', backgroundColor: 'rgba(250,238,218,0.95)', font: { size: 10 } } }
+        }
+      }
+    },
+    scales: {
+      x: { type: 'linear', title: { display: true, text: 'Race ronde', color: '#5F5E5A' }, min: 1, max: RACE.LAPS, ticks: { color: '#5F5E5A', stepSize: 5 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+      y: { title: { display: true, text: 'Tijd t.o.v. referentie (s) — hoger = vóór', color: '#5F5E5A' }, ticks: { color: '#5F5E5A', callback: v => (v > 0 ? '+' : '') + v + 's' }, grid: { color: 'rgba(0,0,0,0.04)' } }
+    }
+  }
+});
+
+document.querySelectorAll('.ctrl-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const mode = btn.dataset.mode;
+    if (mode === 'stick') {
+      chart.data.datasets[0].data = stick.ourData;
+      chart.data.datasets[1].data = stick.rivalData;
+    } else {
+      chart.data.datasets[0].data = cover.ourData;
+      chart.data.datasets[1].data = cover.rivalData;
+    }
+    chart.update();
+  });
+});
+
+</script>
+
+<script>
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  var btns = document.querySelectorAll('.nav-btn');
+  if (e.key === 'ArrowLeft') {
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.indexOf('Vorige') !== -1 && !btns[i].hasAttribute('aria-disabled')) { btns[i].click(); return; }
+    }
+  } else if (e.key === 'ArrowRight') {
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.indexOf('Volgende') !== -1 && !btns[i].hasAttribute('aria-disabled')) { btns[i].click(); return; }
+    }
+  }
+});
+</script>
+
+</body>
+</html>

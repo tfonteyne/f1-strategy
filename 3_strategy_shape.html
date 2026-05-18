@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strategy shape</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<style>
+:root {
+  --bg: #FAFAF7;
+  --surface: #FFFFFF;
+  --text: #1A1A1A;
+  --muted: #5F5E5A;
+  --border: rgba(0,0,0,0.08);
+  --soft: #E24B4A;
+  --soft-bg: #FCEBEB;
+  --soft-dark: #791F1F;
+  --medium: #888780;
+  --medium-bg: #F1EFE8;
+  --medium-dark: #444441;
+  --hard: #185FA5;
+  --hard-bg: #E6F1FB;
+  --hard-dark: #042C53;
+  --fuel: #BA7517;
+  --fuel-bg: #FAEEDA;
+  --good: #0F6E56;
+  --good-bg: #E1F5EE;
+  --accent: #534AB7;
+  --accent-bg: #EEEDFE;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 32px 24px;
+  line-height: 1.5;
+}
+.wrap { max-width: 960px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 500; margin: 0 0 6px; }
+.sub { font-size: 14px; color: var(--muted); margin: 0 0 24px; max-width: 760px; }
+
+.card {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 0.5px solid var(--border);
+  padding: 20px;
+}
+.chart-box { position: relative; height: 440px; }
+.axis-hint {
+  font-size: 11px; color: var(--muted);
+  text-align: center;
+  margin-bottom: 4px;
+  font-style: italic;
+}
+
+/* Story strip showing the through-line */
+.story-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.story-strip .step {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: transparent;
+  flex-shrink: 0;
+}
+.story-strip .step.current {
+  background: var(--text);
+  color: white;
+  font-weight: 500;
+}
+.story-strip .step.done {
+  background: var(--medium-bg);
+  color: var(--text);
+}
+.story-strip .arrow { color: rgba(0,0,0,0.2); flex-shrink: 0; font-size: 10px; }
+
+/* Common annotation row */
+.annotations-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.anno {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--medium-bg);
+  font-size: 13px;
+  color: var(--muted);
+}
+.anno strong { color: var(--text); font-weight: 500; display: block; margin-bottom: 2px; font-size: 13px; }
+
+/* Buttons (segmented) */
+.controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px; padding-bottom: 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+.ctrl-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.ctrl-btn {
+  border: 0.5px solid rgba(0,0,0,0.15);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ctrl-btn:hover { background: rgba(0,0,0,0.04); }
+.ctrl-btn.active { background: var(--text); color: white; border-color: var(--text); }
+
+.legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  margin-top: 18px; padding-top: 14px;
+  border-top: 0.5px solid var(--border);
+  font-size: 13px;
+}
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.swatch { width: 16px; height: 3px; border-radius: 2px; }
+.swatch.dashed { background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 8px); }
+
+.takeaway-pill {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 13px;
+  border-left: 3px solid var(--accent);
+}
+.takeaway-pill strong { color: var(--accent); font-weight: 500; }
+
+
+.nav { max-width: 960px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border-radius: 12px; border: 0.5px solid var(--border); }
+.nav-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 0.5px solid rgba(0,0,0,0.15); background: transparent; color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; text-decoration: none; transition: background 0.12s; white-space: nowrap; }
+.nav-btn:hover { background: rgba(0,0,0,0.04); }
+.nav-btn[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
+.nav-title { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.nav-title .count { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+.nav-title .name { font-size: 14px; font-weight: 500; }
+.nav-dots { display: flex; gap: 6px; margin-right: 4px; }
+.nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,0.15); transition: background 0.12s; }
+.nav-dot:hover { background: rgba(0,0,0,0.35); }
+.nav-dot.active { background: var(--text); }
+@media (max-width: 600px) { .nav-btn .label { display: none; } .nav-dots { display: none; } }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav" aria-label="Slides">
+  <a class="nav-btn" href="2_tyre_curves.html"  title="Vorige (←)"><span aria-hidden="true">←</span><span class="label">Vorige</span></a>
+  <div class="nav-title">
+    <span class="count">3 van 8</span>
+    <span class="name">Strategievorm</span>
+  </div>
+  <div class="nav-dots"><a href="1_base_lap_time.html" class="nav-dot" title="Basis rondetijd"></a><a href="2_tyre_curves.html" class="nav-dot" title="Bandencurves"></a><a href="3_strategy_shape.html" class="nav-dot active" title="Strategievorm"></a><a href="4_clear_air_simulation.html" class="nav-dot" title="Clean-air simulatie"></a><a href="5_monte_carlo.html" class="nav-dot" title="Monte Carlo"></a><a href="6_undercut.html" class="nav-dot" title="De undercut"></a><a href="7_cover_off.html" class="nav-dot" title="De cover-off"></a><a href="8_full_race_gapper.html" class="nav-dot" title="Volledige race gapper"></a></div>
+  <a class="nav-btn" href="4_clear_air_simulation.html"  title="Volgende (→)"><span class="label">Volgende</span><span aria-hidden="true">→</span></a>
+</nav>
+<div class="story-strip">
+<span class="step done">Rondetijd</span>
+<span class="arrow">▸</span>
+<span class="step done">Banden</span>
+<span class="arrow">▸</span>
+<span class="step current">Hoeveel stops?</span>
+<span class="arrow">▸</span>
+<span class="step">Welke ronde?</span>
+<span class="arrow">▸</span>
+<span class="step">Plan A</span>
+<span class="arrow">▸</span>
+<span class="step">Aanval</span>
+<span class="arrow">▸</span>
+<span class="step">Verdediging</span>
+<span class="arrow">▸</span>
+<span class="step">Volle race</span>
+</div>
+
+<h1>Hoeveel pit stops?</h1>
+<p class="sub">We tellen de rondetijden op voor elke mogelijke wedstrijdvorm. De nullijn bovenaan is de "perfecte" basisronde — geen brandstof, geen bandenslijtage, geen pit stops. Onmogelijk in een echte race, maar nuttig als ijklat. Elke lijn toont hoeveel seconden je verliest t.o.v. die ideale ronde. Hoogste lijn op het einde wint.</p>
+
+<div class="card">
+  <div class="controls">
+    <span class="ctrl-label">Toon:</span>
+    <button class="ctrl-btn active" data-show="nostop">Enkel no-stop</button>
+    <button class="ctrl-btn" data-show="onestop">+ One-stop</button>
+    <button class="ctrl-btn" data-show="all">+ Two-stop</button>
+  </div>
+
+  <div class="axis-hint">No-stop lijn = brandstofverlies + bandenslijtage zónder pit stops · One/Two-stop = idem + 22s per pit stop</div>
+  <div class="chart-box"><canvas id="chart"></canvas></div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch" style="background: var(--muted);"></span><span>No-stop (illegaal): hard tyre 55 ronden, geen pit verliezen</span></div>
+    <div class="legend-item"><span class="swatch" style="background: var(--accent);"></span><span>One-stop, soft → hard (L21)</span></div>
+    <div class="legend-item"><span class="swatch" style="background: var(--good);"></span><span>Two-stop, soft → hard → hard (L17 + L37)</span></div>
+  </div>
+
+  <div class="annotations-row" id="annoRow"></div>
+
+  <div class="takeaway-pill"><strong>Beslissing:</strong> one-stop, soft → hard. Nu nog kiezen op welke ronde we stoppen.</div>
+</div>
+
+</div>
+
+<script>
+// ============================================================
+// SHARED RACE MODEL — used by all pages so visuals stay consistent
+// ============================================================
+//
+// Worked example throughout:
+//   - 55-lap dry race
+//   - Two compounds: soft and hard
+//   - Our car ("blue") runs one-stop soft → hard
+//   - Clear-air optimum (page 4): stop on lap 21
+//   - Monte Carlo Plan A (page 5): stop on lap 21 (with L19-L22 robust range)
+//   - Race-day undercut (page 6): stop on lap 20 — one lap earlier than rival's plan
+//   - Cover-off (page 7): we copy a 2-stop rival, second stop on lap 40
+//   - Rival starts 0.7s ahead of us
+// ============================================================
+
+const RACE = {
+  LAPS: 55,
+  PIT_LOSS: 22.0,
+  BASE_DRY_LAP: 88.0,
+  FUEL_KG_AT_START: 110,
+  FUEL_SEC_PER_KG: 0.035,
+  REFERENCE_LAP: 90.0,
+
+  COMPOUNDS: {
+    soft: { baseOffset: -1.0, deg: 0.10, life: 19, cliff: 0.40, color: '#E24B4A' },
+    hard: { baseOffset:  0.2, deg: 0.04, life: 33, cliff: 0.40, color: '#185FA5' }
+  },
+
+  // Narrative numbers used across pages
+  CLEAR_AIR_OPTIMAL_STOP: 21,
+  PLAN_A_STOP: 21,
+  ACTUAL_STOP_OUR_CAR: 20,
+  RIVAL_STOP: 21,
+  RIVAL_HEAD_START: 0.7,
+  SECOND_STOP_LAP: 40,  // cover-off scenario second stop
+
+  COLOURS: {
+    soft:   '#E24B4A',
+    hard:   '#185FA5',
+    fuel:   '#BA7517',
+    base:   '#5F5E5A',
+    ourCar: '#185FA5',
+    rival:  '#E24B4A',
+    text:   '#1A1A1A',
+    muted:  '#5F5E5A',
+    accent: '#534AB7',
+    good:   '#0F6E56'
+  }
+};
+
+function fuelKgAtLap(lap) {
+  const burnPerLap = RACE.FUEL_KG_AT_START / RACE.LAPS;
+  return Math.max(0, RACE.FUEL_KG_AT_START - (lap - 1) * burnPerLap);
+}
+
+function fuelPenaltyAtLap(lap) {
+  const burnPerLap = RACE.FUEL_KG_AT_START / RACE.LAPS;
+  const kg = Math.max(0, RACE.FUEL_KG_AT_START - (lap - 0.5) * burnPerLap);
+  return kg * RACE.FUEL_SEC_PER_KG;
+}
+
+function tyrePenalty(compound, stintLap) {
+  const c = RACE.COMPOUNDS[compound];
+  let t = c.baseOffset + c.deg * (stintLap - 1);
+  if (stintLap > c.life) t += c.cliff * (stintLap - c.life);
+  return t;
+}
+
+function lapTimeForStrategy(raceLap, strategy) {
+  let remaining = raceLap;
+  for (const stint of strategy) {
+    if (remaining <= stint.length) {
+      return RACE.BASE_DRY_LAP + fuelPenaltyAtLap(raceLap) + tyrePenalty(stint.compound, remaining);
+    }
+    remaining -= stint.length;
+  }
+  const last = strategy[strategy.length - 1];
+  return RACE.BASE_DRY_LAP + fuelPenaltyAtLap(raceLap) + tyrePenalty(last.compound, remaining + last.length);
+}
+
+function cumulativeTime(raceLap, strategy, stopLaps) {
+  let t = 0;
+  for (let L = 1; L <= raceLap; L++) {
+    t += lapTimeForStrategy(L, strategy);
+    if (stopLaps.includes(L)) t += RACE.PIT_LOSS;
+  }
+  return t;
+}
+
+function gapToReference(raceLap, strategy, stopLaps) {
+  return raceLap * RACE.REFERENCE_LAP - cumulativeTime(raceLap, strategy, stopLaps);
+}
+
+function buildTwoStintStrategy(stopLap, c1, c2) {
+  return [
+    { compound: c1, length: stopLap },
+    { compound: c2, length: RACE.LAPS - stopLap }
+  ];
+}
+
+function buildThreeStintStrategy(stop1, stop2, c1, c2, c3) {
+  return [
+    { compound: c1, length: stop1 },
+    { compound: c2, length: stop2 - stop1 },
+    { compound: c3, length: RACE.LAPS - stop2 }
+  ];
+}
+
+</script>
+
+<script>
+
+const noStopStrategy = [{ compound: 'hard', length: RACE.LAPS }];
+const oneStopStrategy = buildTwoStintStrategy(21, 'soft', 'hard');
+const twoStopStrategy = buildThreeStintStrategy(17, 37, 'soft', 'hard', 'hard');
+
+// Use the no-fuel-no-tyres lap (88.0s) as the absolute baseline.
+// This is the same baseline used on slide 1, so the story builds consistently.
+// Every line will end at NEGATIVE values (every strategy is slower than a magical
+// no-fuel-no-tyres-no-pits race). The HIGHEST line wins.
+const refLap = RACE.BASE_DRY_LAP;
+
+function buildSeries(strategy, stops) {
+  const data = [];
+  let cum = 0;
+  for (let L = 1; L <= RACE.LAPS; L++) {
+    cum += lapTimeForStrategy(L, strategy);
+    data.push({ x: L, y: +(refLap * L - cum).toFixed(2) });
+    if (stops.includes(L)) {
+      cum += RACE.PIT_LOSS;
+      data.push({ x: L, y: +(refLap * L - cum).toFixed(2) });
+    }
+  }
+  return data;
+}
+
+const noStopData = buildSeries(noStopStrategy, []);
+const oneStopData = buildSeries(oneStopStrategy, [21]);
+const twoStopData = buildSeries(twoStopStrategy, [17, 37]);
+
+const chart = new Chart(document.getElementById('chart'), {
+  type: 'line',
+  data: {
+    datasets: [
+      { label: 'No-stop', data: noStopData, borderColor: '#888780', borderWidth: 2.5, tension: 0, pointRadius: 0, fill: false, borderDash: [5, 4] },
+      { label: 'One-stop', data: oneStopData, borderColor: '#534AB7', borderWidth: 3, tension: 0, pointRadius: 0, fill: false, hidden: true },
+      { label: 'Two-stop', data: twoStopData, borderColor: '#0F6E56', borderWidth: 2.5, tension: 0, pointRadius: 0, fill: false, hidden: true }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    parsing: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y > 0 ? '+' : ''}${c.parsed.y.toFixed(1)}s t.o.v. basisronde` } },
+      annotation: {
+        annotations: {
+          zero: { type: 'line', yMin: 0, yMax: 0, borderColor: 'rgba(0,0,0,0.15)', borderWidth: 1 }
+        }
+      }
+    },
+    scales: {
+      x: { type: 'linear', title: { display: true, text: 'Race ronde', color: '#5F5E5A' }, min: 0, max: RACE.LAPS, ticks: { color: '#5F5E5A', stepSize: 5 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+      y: { title: { display: true, text: 'Tijdwinst t.o.v. basisronde (s) — hoogste lijn wint', color: '#5F5E5A' }, ticks: { color: '#5F5E5A', callback: v => (v > 0 ? '+' : '') + v + 's' }, grid: { color: 'rgba(0,0,0,0.04)' }, min: -200, max: 5 }
+    }
+  }
+});
+
+const ANNOTATIONS = {
+  nostop: [
+    { strong: 'Wat zit erin?', body: 'Brandstof brandt op + hard tyre slijt over 55 ronden. Géén pit stops dus géén 22s verlies.' },
+    { strong: 'Lijn daalt steeds', body: 'Tyre slijtage versnelt. Vanaf L34+ valt de hard over de cliff — laatste ronden zijn brutaal traag.' },
+    { strong: 'Illegaal in F1', body: 'Reglement: minstens twee verschillende mengsels in een droge race.' },
+    { strong: 'Verliest dik op pace', body: 'Eindigt 100+ seconden achter zelfs als je geen tijd in de pits verliest.' }
+  ],
+  onestop: [
+    { strong: 'Sneller op soft tot L21', body: 'Eerste stint loopt boven de no-stop lijn — soft is gewoon sneller dan hard.' },
+    { strong: 'Diepe duik op L21', body: 'De 22s pit stop. Lijn klapt naar beneden, even traagst van allemaal.' },
+    { strong: 'Verse hard herstelt', body: 'Na de pit rijden we sneller dan no-stop. Door de cliff vermeden, lopen we ze voorbij.' },
+    { strong: 'Eindigt bovenaan', body: '~120s vóór no-stop op de finish. One-stop is duidelijk sneller.' }
+  ],
+  all: [
+    { strong: 'Two-stop verliest ~10s', body: 'Verse softs zijn snel, maar 2 × 22s = 44s in de pits weegt zwaarder.' },
+    { strong: 'Twee duiken zichtbaar', body: 'L17 en L37 — elke pit stop kost dezelfde 22s.' },
+    { strong: 'One-stop wint nipt', body: 'Eindigt het hoogst. Dus: één stop, soft → hard.' },
+    { strong: 'Nu nog: welke ronde?', body: 'In de volgende slide zoeken we de optimale pit ronde.' }
+  ]
+};
+
+function renderAnno(key) {
+  const row = document.getElementById('annoRow');
+  row.innerHTML = ANNOTATIONS[key].map(a => `<div class="anno"><strong>${a.strong}</strong>${a.body}</div>`).join('');
+}
+
+function setView(key) {
+  document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.toggle('active', b.dataset.show === key));
+  if (key === 'nostop') {
+    chart.data.datasets[0].hidden = false;
+    chart.data.datasets[1].hidden = true;
+    chart.data.datasets[2].hidden = true;
+  } else if (key === 'onestop') {
+    chart.data.datasets[0].hidden = false;
+    chart.data.datasets[1].hidden = false;
+    chart.data.datasets[2].hidden = true;
+  } else {
+    chart.data.datasets[0].hidden = false;
+    chart.data.datasets[1].hidden = false;
+    chart.data.datasets[2].hidden = false;
+  }
+  chart.update();
+  renderAnno(key);
+}
+
+document.querySelectorAll('.ctrl-btn').forEach(btn => {
+  btn.addEventListener('click', () => setView(btn.dataset.show));
+});
+setView('nostop');
+
+</script>
+
+<script>
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  var btns = document.querySelectorAll('.nav-btn');
+  if (e.key === 'ArrowLeft') {
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.indexOf('Vorige') !== -1 && !btns[i].hasAttribute('aria-disabled')) { btns[i].click(); return; }
+    }
+  } else if (e.key === 'ArrowRight') {
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.indexOf('Volgende') !== -1 && !btns[i].hasAttribute('aria-disabled')) { btns[i].click(); return; }
+    }
+  }
+});
+</script>
+
+</body>
+</html>

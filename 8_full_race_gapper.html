@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full race gapper</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<style>
+:root {
+  --bg: #FAFAF7;
+  --surface: #FFFFFF;
+  --text: #1A1A1A;
+  --muted: #5F5E5A;
+  --border: rgba(0,0,0,0.08);
+  --soft: #E24B4A;
+  --soft-bg: #FCEBEB;
+  --soft-dark: #791F1F;
+  --medium: #888780;
+  --medium-bg: #F1EFE8;
+  --medium-dark: #444441;
+  --hard: #185FA5;
+  --hard-bg: #E6F1FB;
+  --hard-dark: #042C53;
+  --fuel: #BA7517;
+  --fuel-bg: #FAEEDA;
+  --good: #0F6E56;
+  --good-bg: #E1F5EE;
+  --accent: #534AB7;
+  --accent-bg: #EEEDFE;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 32px 24px;
+  line-height: 1.5;
+}
+.wrap { max-width: 960px; margin: 0 auto; }
+h1 { font-size: 22px; font-weight: 500; margin: 0 0 6px; }
+.sub { font-size: 14px; color: var(--muted); margin: 0 0 24px; max-width: 760px; }
+
+.card {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 0.5px solid var(--border);
+  padding: 20px;
+}
+.chart-box { position: relative; height: 440px; }
+.axis-hint {
+  font-size: 11px; color: var(--muted);
+  text-align: center;
+  margin-bottom: 4px;
+  font-style: italic;
+}
+
+/* Story strip showing the through-line */
+.story-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 10px;
+  border: 0.5px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.story-strip .step {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: transparent;
+  flex-shrink: 0;
+}
+.story-strip .step.current {
+  background: var(--text);
+  color: white;
+  font-weight: 500;
+}
+.story-strip .step.done {
+  background: var(--medium-bg);
+  color: var(--text);
+}
+.story-strip .arrow { color: rgba(0,0,0,0.2); flex-shrink: 0; font-size: 10px; }
+
+/* Common annotation row */
+.annotations-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.anno {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--medium-bg);
+  font-size: 13px;
+  color: var(--muted);
+}
+.anno strong { color: var(--text); font-weight: 500; display: block; margin-bottom: 2px; font-size: 13px; }
+
+/* Buttons (segmented) */
+.controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px; padding-bottom: 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+.ctrl-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.ctrl-btn {
+  border: 0.5px solid rgba(0,0,0,0.15);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ctrl-btn:hover { background: rgba(0,0,0,0.04); }
+.ctrl-btn.active { background: var(--text); color: white; border-color: var(--text); }
+
+.legend {
+  display: flex; gap: 20px; flex-wrap: wrap;
+  margin-top: 18px; padding-top: 14px;
+  border-top: 0.5px solid var(--border);
+  font-size: 13px;
+}
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.swatch { width: 16px; height: 3px; border-radius: 2px; }
+.swatch.dashed { background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 8px); }
+
+.takeaway-pill {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 13px;
+  border-left: 3px solid var(--accent);
+}
+.takeaway-pill strong { color: var(--accent); font-weight: 500; }
+
+
+.nav { max-width: 960px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border-radius: 12px; border: 0.5px solid var(--border); }
+.nav-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 0.5px solid rgba(0,0,0,0.15); background: transparent; color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; text-decoration: none; transition: background 0.12s; white-space: nowrap; }
+.nav-btn:hover { background: rgba(0,0,0,0.04); }
+.nav-btn[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
+.nav-title { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.nav-title .count { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+.nav-title .name { font-size: 14px; font-weight: 500; }
+.nav-dots { display: flex; gap: 6px; margin-right: 4px; }
+.nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,0.15); transition: background 0.12s; }
+.nav-dot:hover { background: rgba(0,0,0,0.35); }
+.nav-dot.active { background: var(--text); }
+@media (max-width: 600px) { .nav-btn .label { display: none; } .nav-dots { display: none; } }
+
+
+.legend-cars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+.car-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.car-swatch { width: 14px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav" aria-label="Slides">
+  <a class="nav-btn" href="7_cover_off.html"  title="Vorige (←)"><span aria-hidden="true">←</span><span class="label">Vorige</span></a>
+  <div class="nav-title">
+    <span class="count">8 van 8</span>
+    <span class="name">Volledige race gapper</span>
+  </div>
+  <div class="nav-dots"><a href="1_base_lap_time.html" class="nav-dot" title="Basis rondetijd"></a><a href="2_tyre_curves.html" class="nav-dot" title="Bandencurves"></a><a href="3_strategy_shape.html" class="nav-dot" title="Strategievorm"></a><a href="4_clear_air_simulation.html" class="nav-dot" title="Clean-air simulatie"></a><a href="5_monte_carlo.html" class="nav-dot" title="Monte Carlo"></a><a href="6_undercut.html" class="nav-dot" title="De undercut"></a><a href="7_cover_off.html" class="nav-dot" title="De cover-off"></a><a href="8_full_race_gapper.html" class="nav-dot active" title="Volledige race gapper"></a></div>
+  <a class="nav-btn" href="#" aria-disabled="true" title="Volgende (→)"><span class="label">Volgende</span><span aria-hidden="true">→</span></a>
+</nav>
+<div class="story-strip">
+<span class="step done">Rondetijd</span>
+<span class="arrow">▸</span>
+<span class="step done">Banden</span>
+<span class="arrow">▸</span>
+<span class="step done">Hoeveel stops?</span>
+<span class="arrow">▸</span>
+<span class="step done">Welke ronde?</span>
+<span class="arrow">▸</span>
+<span class="step done">Plan A</span>
+<span class="arrow">▸</span>
+<span class="step done">Aanval</span>
+<span class="arrow">▸</span>
+<span class="step done">Verdediging</span>
+<span class="arrow">▸</span>
+<span class="step current">Volle race</span>
+</div>
+
+<h1>Volledige race — 20-wagen gapper plot</h1>
+<p class="sub">De hele 55-ronde race, alle 20 wagens. Het verhaal dat we net vertelden — undercut op ronde 20, cover-off op ronde 40 — gebeurt hier ergens binnenin, omringd door 18 andere strategische beslissingen. Hogere lijn = vóór. Onze wagen (blauw) en de rival waarmee we vochten (rood) zijn uitgelicht. Klik op een wagennaam om die te volgen.</p>
+
+<div class="card">
+  <div class="controls">
+    <span class="ctrl-label">Uitlichten:</span>
+    <button class="ctrl-btn active" data-highlight="none">Alle wagens</button>
+    <button class="ctrl-btn" data-highlight="us-vs-rival">Wij vs rival</button>
+    <button class="ctrl-btn" data-highlight="strategy-variety">Strategievariatie</button>
+    <button class="ctrl-btn" data-highlight="lapped">Gedubbelde wagens</button>
+  </div>
+
+  <div class="axis-hint">↑ vóór referentie-tempo · pit stops doen de lijn dalen · gedubbelde wagens in gestreept grijs</div>
+  <div class="chart-box" style="height: 560px;"><canvas id="chart"></canvas></div>
+
+  <div class="legend-cars" id="legendCars"></div>
+</div>
+
+<div class="annotations-row">
+  <div class="anno"><strong>Ronde 19: onze undercut</strong>Blauw pit één ronde voor rood. De gap flipt: wij pakken P1.</div>
+  <div class="anno"><strong>Ronde 40: rival converteert</strong>Rood pit opnieuw op verse softs (clean air vóór hen). Wij coveren, ook stoppen. Positie behouden.</div>
+  <div class="anno"><strong>Andere strategieën lopen ook</strong>Sommigen vroeg op softs, sommigen hard-eerst, sommigen op two-stop. Elke lijn is een verhaal.</div>
+  <div class="anno"><strong>Inhaal kost tijd</strong>Snellere wagens vast achter een tragere verliezen ~0,3s/ronde in dirty air, totdat ze passeren. Daarom kruisen lijnen niet zomaar.</div>
+</div>
+
+<div class="card" style="margin-top: 18px;">
+  <p style="font-size: 13px; color: var(--muted); margin: 0;">
+    <strong style="color: var(--text); font-weight: 500;">Eén ding hebben we overgeslagen.</strong> Elke pit stop hangt ook af van verkeer — waar je effectief weer op de baan komt. Een theoretisch optimale stop is waardeloos als je terug komt in het midden van een groep. Live tijdens de race projecteren strategen waar elke wagen na een stop zou landen, en ze trekken pas de trigger als er clean air vóór ligt. Onze undercut en cover-off hadden clean air. Was dat anders geweest, dan zag het verhaal er heel anders uit.
+  </p>
+</div>
+
+</div>
+
+<script>
+// ============================================================
+// SHARED RACE MODEL — used by all pages so visuals stay consistent
+// ============================================================
+//
+// Worked example throughout:
+//   - 55-lap dry race
+//   - Two compounds: soft and hard
+//   - Our car ("blue") runs one-stop soft → hard
+//   - Clear-air optimum (page 4): stop on lap 21
+//   - Monte Carlo Plan A (page 5): stop on lap 21 (with L19-L22 robust range)
+//   - Race-day undercut (page 6): stop on lap 20 — one lap earlier than rival's plan
+//   - Cover-off (page 7): we copy a 2-stop rival, second stop on lap 40
+//   - Rival starts 0.7s ahead of us
+// ============================================================
+
+const RACE = {
+  LAPS: 55,
+  PIT_LOSS: 22.0,
+  BASE_DRY_LAP: 88.0,
+  FUEL_KG_AT_START: 110,
+  FUEL_SEC_PER_KG: 0.035,
+  REFERENCE_LAP: 90.0,
+
+  COMPOUNDS: {
+    soft: { baseOffset: -1.0, deg: 0.10, life: 19, cliff: 0.40, color: '#E24B4A' },
+    hard: { baseOffset:  0.2, deg: 0.04, life: 33, cliff: 0.40, color: '#185FA5' }
+  },
+
+  // Narrative numbers used across pages
+  CLEAR_AIR_OPTIMAL_STOP: 21,
+  PLAN_A_STOP: 21,
+  ACTUAL_STOP_OUR_CAR: 20,
+  RIVAL_STOP: 21,
+  RIVAL_HEAD_START: 0.7,
+  SECOND_STOP_LAP: 40,  // cover-off scenario second stop
+
+  COLOURS: {
+    soft:   '#E24B4A',
+    hard:   '#185FA5',
+    fuel:   '#BA7517',
+    base:   '#5F5E5A',
+    ourCar: '#185FA5',
+    rival:  '#E24B4A',
+    text:   '#1A1A1A',
+    muted:  '#5F5E5A',
+    accent: '#534AB7',
+    good:   '#0F6E56'
+  }
+};
+
+function fuelKgAtLap(lap) {
+  const burnPerLap = RACE.FUEL_KG_AT_START / RACE.LAPS;
+  return Math.max(0, RACE.FUEL_KG_AT_START - (lap - 1) * burnPerLap);
+}
+
+function fuelPenaltyAtLap(lap) {
+  const burnPerLap = RACE.FUEL_KG_AT_START / RACE.LAPS;
+  const kg = Math.max(0, RACE.FUEL_KG_AT_START - (lap - 0.5) * burnPerLap);
+  return kg * RACE.FUEL_SEC_PER_KG;
+}
+
+function tyrePenalty(compound, stintLap) {
+  const c = RACE.COMPOUNDS[compound];
+  let t = c.baseOffset + c.deg * (stintLap - 1);
+  if (stintLap > c.life) t += c.cliff * (stintLap - c.life);
+  return t;
+}
+
+function lapTimeForStrategy(raceLap, strategy) {
+  let remaining = raceLap;
+  for (const stint of strategy) {
+    if (remaining <= stint.length) {
+      return RACE.BASE_DRY_LAP + fuelPenaltyAtLap(raceLap) + tyrePenalty(stint.compound, remaining);
+    }
+    remaining -= stint.length;
+  }
+  const last = strategy[strategy.length - 1];
+  return RACE.BASE_DRY_LAP + fuelPenaltyAtLap(raceLap) + tyrePenalty(last.compound, remaining + last.length);
+}
+
+function cumulativeTime(raceLap, strategy, stopLaps) {
+  let t = 0;
+  for (let L = 1; L <= raceLap; L++) {
+    t += lapTimeForStrategy(L, strategy);
+    if (stopLaps.includes(L)) t += RACE.PIT_LOSS;
+  }
+  return t;
+}
+
+function gapToReference(raceLap, strategy, stopLaps) {
+  return raceLap * RACE.REFERENCE_LAP - cumulativeTime(raceLap, strategy, stopLaps);
+}
+
+function buildTwoStintStrategy(stopLap, c1, c2) {
+  return [
+    { compound: c1, length: stopLap },
+    { compound: c2, length: RACE.LAPS - stopLap }
+  ];
+}
+
+function buildThreeStintStrategy(stop1, stop2, c1, c2, c3) {
+  return [
+    { compound: c1, length: stop1 },
+    { compound: c2, length: stop2 - stop1 },
+    { compound: c3, length: RACE.LAPS - stop2 }
+  ];
+}
+
+</script>
+
+<script>
+
+// 20 cars. Indices: 0 = our rival, 1 = our car.
+// To keep the storyline consistent with pages 6 and 7, rival and us have
+// matching pace; our 0.7s head-start deficit is encoded as a gridOffset override.
+const cars = [
+  // Front runners
+  { name: 'P1 Rival', color: '#E24B4A', pace: -0.10, stints: [{c:'soft',L:20},{c:'hard',L:20},{c:'soft',L:15}], emphasis: true, gridOverride: 0 },
+  { name: 'P2 Wij',   color: '#185FA5', pace: -0.10, stints: [{c:'soft',L:19},{c:'hard',L:21},{c:'soft',L:15}], emphasis: true, gridOverride: 0.7 },
+  { name: 'P3',       color: '#534AB7', pace:  0.55, stints: [{c:'soft',L:17},{c:'hard',L:38}] },
+  { name: 'P4',       color: '#0F6E56', pace:  0.62, stints: [{c:'soft',L:16},{c:'hard',L:39}] },
+
+  // Mid-pack
+  { name: 'P5',       color: '#D85A30', pace:  0.70, stints: [{c:'soft',L:14},{c:'hard',L:23},{c:'soft',L:18}] },
+  { name: 'P6',       color: '#BA7517', pace:  0.78, stints: [{c:'soft',L:18},{c:'hard',L:37}] },
+  { name: 'P7',       color: '#639922', pace:  0.85, stints: [{c:'hard',L:30},{c:'soft',L:25}] },
+  { name: 'P8',       color: '#D4537E', pace:  0.92, stints: [{c:'soft',L:19},{c:'hard',L:36}] },
+  { name: 'P9',       color: '#97C459', pace:  1.00, stints: [{c:'hard',L:28},{c:'soft',L:27}] },
+  { name: 'P10',      color: '#85B7EB', pace:  1.10, stints: [{c:'soft',L:17},{c:'hard',L:38}] },
+
+  // Lower mid
+  { name: 'P11',      color: '#F09595', pace:  1.20, stints: [{c:'hard',L:32},{c:'soft',L:23}] },
+  { name: 'P12',      color: '#EF9F27', pace:  1.30, stints: [{c:'soft',L:22},{c:'hard',L:33}] },
+  { name: 'P13',      color: '#7F77DD', pace:  1.40, stints: [{c:'hard',L:30},{c:'soft',L:25}] },
+  { name: 'P14',      color: '#FAC775', pace:  1.50, stints: [{c:'soft',L:18},{c:'hard',L:37}] },
+  { name: 'P15',      color: '#5DCAA5', pace:  1.65, stints: [{c:'hard',L:33},{c:'soft',L:22}] },
+  { name: 'P16',      color: '#888780', pace:  1.85, stints: [{c:'soft',L:20},{c:'hard',L:35}] },
+
+  // Lapped
+  { name: 'P17',      color: '#888780', pace:  2.20, stints: [{c:'soft',L:21},{c:'hard',L:34}], lapped: true },
+  { name: 'P18',      color: '#888780', pace:  2.50, stints: [{c:'soft',L:19},{c:'hard',L:36}], lapped: true },
+  { name: 'P19',      color: '#888780', pace:  2.80, stints: [{c:'hard',L:30},{c:'soft',L:25}], lapped: true },
+  { name: 'P20',      color: '#888780', pace:  3.15, stints: [{c:'soft',L:20},{c:'hard',L:35}], lapped: true }
+];
+
+// Pre-compute pit lap arrays for each car
+cars.forEach((car, i) => {
+  const strategy = car.stints.map(s => ({ compound: s.c, length: s.L }));
+  const stopLaps = [];
+  let laps = 0;
+  for (let j = 0; j < car.stints.length - 1; j++) {
+    laps += car.stints[j].L;
+    stopLaps.push(laps);
+  }
+  car._strategy = strategy;
+  car._stopLaps = stopLaps;
+  // Grid offset: explicit override, else 0.4s per grid slot
+  car._gridOffset = (car.gridOverride !== undefined) ? car.gridOverride : i * 0.4;
+  car._seed = i * 1000 + 17;
+});
+
+// Simulate ALL cars simultaneously, lap by lap, with overtaking model
+function simulateFullField() {
+  // State per car: cumulative time, in-pit flag (skip 1 lap of overtaking logic on out-lap)
+  const state = cars.map(car => ({
+    cum: car._gridOffset,
+    history: [],
+    seed: car._seed,
+    justPitted: false
+  }));
+
+  function noise(carIdx) {
+    // Zero noise for our car and rival to keep the storyline crisp & matching pages 6/7
+    if (carIdx === 0 || carIdx === 1) return 0;
+    state[carIdx].seed = (state[carIdx].seed * 9301 + 49297) % 233280;
+    return (state[carIdx].seed / 233280 - 0.5) * 0.12;
+  }
+
+  for (let L = 1; L <= RACE.LAPS; L++) {
+    // Step 1: compute "natural" lap time for each car (without overtaking penalty)
+    const naturalLap = cars.map((car, i) =>
+      lapTimeForStrategy(L, car._strategy) + car.pace + noise(i)
+    );
+
+    // Step 2: project each car's end-of-lap cumulative position
+    const projectedEnd = cars.map((car, i) => state[i].cum + naturalLap[i]);
+
+    // Step 3: rank by current cumulative time (lower = ahead on the road)
+    const orderByPosition = cars.map((_, i) => i).sort((a, b) => state[a].cum - state[b].cum);
+    // orderByPosition[0] = leader, orderByPosition[1] = 2nd, ...
+
+    // Step 4: lap-by-lap pace check
+    // A faster car catches a slower car ahead → if within ~2s and faster, loses ~0.3s/lap
+    // We do this only AFTER lap 2 (everyone settled into race) and skip out-laps
+    const effectiveLap = naturalLap.slice();
+
+    if (L >= 3) {
+      for (let pos = 1; pos < orderByPosition.length; pos++) {
+        const carIdx = orderByPosition[pos];
+        const aheadIdx = orderByPosition[pos - 1];
+
+        // Skip if either just pitted (out-lap noise)
+        if (state[carIdx].justPitted || state[aheadIdx].justPitted) continue;
+
+        // Current gap (positive = car is behind the one ahead)
+        const currentGap = state[carIdx].cum - state[aheadIdx].cum;
+
+        // Are we close enough for dirty air to matter? (within 2 seconds)
+        if (currentGap > 0 && currentGap < 2.0) {
+          // Is the trailing car actually faster?
+          const paceDiff = naturalLap[carIdx] - naturalLap[aheadIdx];
+          // If trailing car is faster (lower lap time), they'd catch — apply dirty air
+          if (paceDiff < -0.05) {
+            // Trailing car can't fully use their pace. Cap their effective lap time
+            // so the gap stays roughly constant (small overtake-allowed reduction)
+            effectiveLap[carIdx] = Math.max(naturalLap[carIdx], naturalLap[aheadIdx] + 0.10);
+          }
+        }
+      }
+    }
+
+    // Step 5: apply effective lap + pit losses, record history
+    cars.forEach((car, i) => {
+      state[i].cum += effectiveLap[i];
+      if (car._stopLaps.includes(L)) {
+        state[i].cum += RACE.PIT_LOSS;
+        state[i].justPitted = true;
+      } else {
+        state[i].justPitted = false;
+      }
+      const ref = L * RACE.REFERENCE_LAP;
+      state[i].history.push({ x: L, y: +(ref - state[i].cum).toFixed(2) });
+    });
+  }
+
+  return cars.map((_, i) => state[i].history);
+}
+
+const carData = simulateFullField();
+cars.forEach((c, i) => { c._data = carData[i]; c.idx = i; });
+
+function hexAlpha(hex, a) {
+  const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function defaultWidth(car) { return car.emphasis ? 2.5 : (car.lapped ? 1.2 : 1.6); }
+
+const datasets = cars.map(car => ({
+  label: car.name,
+  data: car._data,
+  borderColor: car.color,
+  borderWidth: defaultWidth(car),
+  borderDash: car.lapped ? [4, 3] : undefined,
+  tension: 0,
+  pointRadius: 0,
+  fill: false,
+  carIdx: car.idx
+}));
+
+const ctx = document.getElementById('chart');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: { datasets },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    parsing: false,
+    interaction: { intersect: false, mode: 'nearest', axis: 'x' },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y > 0 ? '+' : ''}${c.parsed.y.toFixed(1)}s` } },
+      annotation: {
+        annotations: {
+          zero: { type: 'line', yMin: 0, yMax: 0, borderColor: 'rgba(0,0,0,0.12)', borderWidth: 1 },
+          ourFirstPit: { type: 'line', xMin: 19, xMax: 19, borderColor: 'rgba(24,95,165,0.25)', borderWidth: 1, borderDash: [3, 3] },
+          rivalFirstPit: { type: 'line', xMin: 20, xMax: 20, borderColor: 'rgba(226,75,74,0.25)', borderWidth: 1, borderDash: [3, 3] },
+          secondStop: { type: 'line', xMin: 40, xMax: 40, borderColor: 'rgba(186,117,23,0.3)', borderWidth: 1, borderDash: [4, 4] }
+        }
+      }
+    },
+    scales: {
+      x: { type: 'linear', title: { display: true, text: 'Race ronde', color: '#5F5E5A' }, min: 1, max: RACE.LAPS, ticks: { color: '#5F5E5A', stepSize: 5 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+      y: { title: { display: true, text: 'Tijd t.o.v. referentie (s) — hoger = vóór', color: '#5F5E5A' }, ticks: { color: '#5F5E5A', callback: v => (v > 0 ? '+' : '') + v + 's' }, grid: { color: 'rgba(0,0,0,0.04)' } }
+    }
+  }
+});
+
+const legendEl = document.getElementById('legendCars');
+cars.forEach((car, i) => {
+  const row = document.createElement('div');
+  row.className = 'car-row';
+  row.dataset.idx = i;
+  row.innerHTML = `<span class="car-swatch" style="background: ${car.color};"></span><span>${car.name}${car.lapped ? ' (gedubbeld)' : ''}</span>`;
+  row.addEventListener('click', () => focusCar(i));
+  legendEl.appendChild(row);
+});
+
+function focusCar(idx) {
+  chart.data.datasets.forEach(ds => {
+    if (ds.carIdx === idx) {
+      ds.borderColor = cars[idx].color;
+      ds.borderWidth = 3;
+    } else {
+      ds.borderColor = hexAlpha(cars[ds.carIdx].color, 0.12);
+      ds.borderWidth = cars[ds.carIdx].lapped ? 1 : 1.4;
+    }
+  });
+  chart.update();
+}
+
+function applyHighlight(mode) {
+  if (mode === 'none') {
+    chart.data.datasets.forEach(ds => {
+      ds.borderColor = cars[ds.carIdx].color;
+      ds.borderWidth = defaultWidth(cars[ds.carIdx]);
+    });
+  } else if (mode === 'us-vs-rival') {
+    chart.data.datasets.forEach(ds => {
+      if (ds.carIdx === 0 || ds.carIdx === 1) {
+        ds.borderColor = cars[ds.carIdx].color;
+        ds.borderWidth = 3;
+      } else {
+        ds.borderColor = hexAlpha(cars[ds.carIdx].color, 0.1);
+        ds.borderWidth = cars[ds.carIdx].lapped ? 0.8 : 1.2;
+      }
+    });
+  } else if (mode === 'strategy-variety') {
+    chart.data.datasets.forEach(ds => {
+      if ([4, 5, 6, 11].includes(ds.carIdx)) {
+        ds.borderColor = cars[ds.carIdx].color;
+        ds.borderWidth = 2.5;
+      } else {
+        ds.borderColor = hexAlpha(cars[ds.carIdx].color, 0.12);
+        ds.borderWidth = cars[ds.carIdx].lapped ? 0.8 : 1.2;
+      }
+    });
+  } else if (mode === 'lapped') {
+    chart.data.datasets.forEach(ds => {
+      if (cars[ds.carIdx].lapped) {
+        ds.borderColor = cars[ds.carIdx].color;
+        ds.borderWidth = 2;
+      } else {
+        ds.borderColor = hexAlpha(cars[ds.carIdx].color, 0.12);
+        ds.borderWidth = 1.3;
+      }
+    });
+  }
+  chart.update();
+}
+
+document.querySelectorAll('.ctrl-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyHighlight(btn.dataset.highlight);
+  });
+});
+
+</script>
+
+<script>
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  var btns = document.querySelectorAll('.nav-btn');
+  if (e.key === 'ArrowLeft') {
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.indexOf('Vorige') !== -1 && !btns[i].hasAttribute('aria-disabled')) { btns[i].click(); return; }
+    }
+  } else if (e.key === 'ArrowRight') {
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.indexOf('Volgende') !== -1 && !btns[i].hasAttribute('aria-disabled')) { btns[i].click(); return; }
+    }
+  }
+});
+</script>
+
+</body>
+</html>
