@@ -192,16 +192,16 @@ h1 { font-size: 22px; font-weight: 500; margin: 0 0 6px; }
 </div>
 
 <h1>Wedstrijddag — de cover-off</h1>
-<p class="sub">Ronde 40. We leiden, en houden de rival al een tijd vast in dirty air. Plots licht hun pit board op — ze komen binnen voor een tweede stop. Ze converteren naar een two-stop. Verse softs voor 15 ronden betekent ze rijden ~1,5s/ronde sneller. Onze 3-seconden marge smelt weg. Op papier blijft de two-stop trager en houden we het nipt vol. Maar ons bandenmodel is maar een model — wat als de soft slijtage erger is dan we denken, of de hard cliff vroeger toeslaat? Coveren of niet?</p>
+<p class="sub">Ronde 40. We leiden, en houden de rival al een tijd vast in dirty air. Plots duiken ze de pitstraat in — een verrassende tweede stop, ze converteren naar een two-stop op verse softs. Wij kunnen pas reageren als we het zien gebeuren: onze stop kan ten vroegste op ronde 41, één ronde later. Dat geeft hen één vliegende ronde op vers rubber — een undercut-poging tegen ons. Coveren we, of blijven we bij Plan A?</p>
 
 <div class="card">
   <div class="controls">
     <span class="ctrl-label">Onze reactie:</span>
     <button class="ctrl-btn active" data-mode="stick">Bij Plan A blijven</button>
-    <button class="ctrl-btn" data-mode="cover">Cover de 2-stop</button>
+    <button class="ctrl-btn" data-mode="cover">Cover op L41</button>
   </div>
 
-  <div class="axis-hint">↑ vóór in de race · pit stops doen de lijn dalen · ↓ achter</div>
+  <div class="axis-hint">↑ vóór in de race · pit stops doen de lijn ~22s dalen · ↓ achter</div>
   <div class="chart-box"><canvas id="chart"></canvas></div>
 
   <div class="legend">
@@ -210,13 +210,13 @@ h1 { font-size: 22px; font-weight: 500; margin: 0 0 6px; }
   </div>
 
   <div class="annotations-row">
-    <div class="anno"><strong>Ronde 40: rival pit opnieuw</strong>Verrassing — tweede stop. Ze gaan converteren naar 2-stop op verse softs.</div>
-    <div class="anno"><strong>Als we blijven (op papier)</strong>22s marge zakt ~1,5s/ronde. We winnen met ~1s. Net.</div>
-    <div class="anno"><strong>Risico: modelonzekerheid</strong>Als bandenslijtage 10% erger is dan gemodelleerd, verliezen we. We zetten de race in op het model.</div>
-    <div class="anno"><strong>Als we coveren</strong>Zelfde banden. Ze kunnen ons niet meer pakken, hoe de banden ook reageren. ~3s comfortabel.</div>
+    <div class="anno"><strong>Ronde 40: rival pit, wij niet</strong>We zien het pas als ze al binnen zijn. Wij kunnen ten vroegste op L41 reageren.</div>
+    <div class="anno"><strong>L41: hun undercut-poging</strong>Eén ronde verse softs vóór ons. De gap raakt heel even nul — dit is het gevaarlijke moment.</div>
+    <div class="anno"><strong>Als we coveren op L41</strong>We pitten direct als reactie. Vanaf L42 weer vóór. We houden de positie — maar nipt.</div>
+    <div class="anno"><strong>Als we blijven (Plan A)</strong>Op papier houden we ook stand, maar het model moet kloppen. Eén ronde te traag reageren = positie kwijt.</div>
   </div>
 
-  <div class="takeaway-pill"><strong>Cover de move.</strong> Op papier houden we het nipt vol. Maar in een echte race klopt het model nooit helemaal — bij twijfel mirror je de wagen achter je en sluit je de race.</div>
+  <div class="takeaway-pill"><strong>Reageer meteen. Cover op L41.</strong> We kunnen niet dezelfde ronde stoppen — we reageren één ronde later. Dat is net genoeg om de undercut af te slaan, zolang we onmiddellijk handelen. Twijfel je één ronde, dan ben je de positie kwijt.</div>
 </div>
 
 </div>
@@ -339,7 +339,7 @@ function buildThreeStintStrategy(stop1, stop2, c1, c2, c3) {
 //   COVER: pit again on lap 40, fresh softs, mirror the rival
 
 const ourStickStrategy = buildTwoStintStrategy(19, 'soft', 'hard');
-const ourCoverStrategy = buildThreeStintStrategy(19, 40, 'soft', 'hard', 'soft');
+const ourCoverStrategy = buildThreeStintStrategy(19, 41, 'soft', 'hard', 'soft');
 const rivalStrategy = buildThreeStintStrategy(20, 40, 'soft', 'hard', 'soft');
 
 const RIVAL_HEAD_START = RACE.RIVAL_HEAD_START;
@@ -348,7 +348,7 @@ const RIVAL_HEAD_START = RACE.RIVAL_HEAD_START;
 // they cannot use their pace advantage — gap parks rather than continually growing
 function buildSeries(mode) {
   const ourStrategy = mode === 'stick' ? ourStickStrategy : ourCoverStrategy;
-  const ourStops = mode === 'stick' ? [19] : [19, 40];
+  const ourStops = mode === 'stick' ? [19] : [19, 41];
   const rivalStops = [20, 40];
 
   const ourData = [];
@@ -406,7 +406,8 @@ const chart = new Chart(ctx, {
         annotations: {
           ourFirstPit: { type: 'line', xMin: 19, xMax: 19, borderColor: 'rgba(24,95,165,0.25)', borderWidth: 1, borderDash: [3, 3] },
           rivalFirstPit: { type: 'line', xMin: 20, xMax: 20, borderColor: 'rgba(226,75,74,0.25)', borderWidth: 1, borderDash: [3, 3] },
-          secondStops: { type: 'line', xMin: 40, xMax: 40, borderColor: 'rgba(186,117,23,0.5)', borderWidth: 1.5, borderDash: [4, 4], label: { display: true, content: 'Rival pit opnieuw (L40)', position: 'end', color: '#854F0B', backgroundColor: 'rgba(250,238,218,0.95)', font: { size: 10 } } }
+          rivalSecondStop: { type: 'line', xMin: 40, xMax: 40, borderColor: 'rgba(226,75,74,0.5)', borderWidth: 1.5, borderDash: [4, 4], label: { display: true, content: 'Rival pit (L40)', position: 'end', color: '#791F1F', backgroundColor: 'rgba(252,235,235,0.95)', font: { size: 10 } } },
+          ourReaction: { type: 'line', xMin: 41, xMax: 41, display: false, borderColor: 'rgba(24,95,165,0.5)', borderWidth: 1.5, borderDash: [4, 4], label: { display: false, content: 'Wij reageren (L41)', position: 'start', color: '#042C53', backgroundColor: 'rgba(230,241,251,0.95)', font: { size: 10 } } }
         }
       }
     },
@@ -425,9 +426,13 @@ document.querySelectorAll('.ctrl-btn').forEach(btn => {
     if (mode === 'stick') {
       chart.data.datasets[0].data = stick.ourData;
       chart.data.datasets[1].data = stick.rivalData;
+      chart.options.plugins.annotation.annotations.ourReaction.display = false;
+      chart.options.plugins.annotation.annotations.ourReaction.label.display = false;
     } else {
       chart.data.datasets[0].data = cover.ourData;
       chart.data.datasets[1].data = cover.rivalData;
+      chart.options.plugins.annotation.annotations.ourReaction.display = true;
+      chart.options.plugins.annotation.annotations.ourReaction.label.display = true;
     }
     chart.update();
   });
