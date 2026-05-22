@@ -192,7 +192,7 @@ h1 { font-size: 22px; font-weight: 500; margin: 0 0 6px; }
 </div>
 
 <h1>Bandencurves</h1>
-<p class="sub">Twee bandenmengsels beschikbaar: soft en hard. Pure bandenprestatie, weergegeven als rondetijd op een verse, lichte wagen, tegen ronden gereden op die set banden. Soft is sneller voor een korte stint, hard houdt veel langer mee. Waar de curves elkaar kruisen zegt wanneer de ene sneller wordt dan de andere.</p>
+<p class="sub">Twee bandenmengsels beschikbaar: soft en hard. Pure bandenprestatie, weergegeven als tijdverlies t.o.v. de snelste mogelijke ronde (verse soft, ronde 1), tegen ronden gereden op die set banden. Soft is sneller voor een korte stint, hard houdt veel langer mee. Waar de curves elkaar kruisen zegt wanneer de ene sneller wordt dan de andere.</p>
 
 <div class="card">
   <div class="chart-box" style="height: 540px;"><canvas id="chart"></canvas></div>
@@ -329,10 +329,13 @@ function buildThreeStintStrategy(stop1, stop2, c1, c2, c3) {
 
 const stintLaps = Array.from({length: 50}, (_, i) => i + 1);
 
+// Baseline = fastest possible lap (verse soft, lap 1). Curves show time LOSS vs that.
+const FASTEST_LAP = RACE.BASE_DRY_LAP + tyrePenalty('soft', 1);
+
 function curve(compound, maxLap) {
   return stintLaps.filter(L => L <= maxLap).map(L => ({
     x: L,
-    y: +(RACE.BASE_DRY_LAP + tyrePenalty(compound, L)).toFixed(2)
+    y: +(RACE.BASE_DRY_LAP + tyrePenalty(compound, L) - FASTEST_LAP).toFixed(2)
   }));
 }
 
@@ -353,7 +356,7 @@ new Chart(document.getElementById('chart'), {
     interaction: { intersect: false, mode: 'index' },
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}s` } },
+      tooltip: { callbacks: { label: c => `${c.dataset.label}: +${c.parsed.y.toFixed(2)}s t.o.v. snelste soft` } },
       annotation: {
         annotations: {
           softLife: {
@@ -371,7 +374,7 @@ new Chart(document.getElementById('chart'), {
     },
     scales: {
       x: { type: 'linear', title: { display: true, text: 'Ronde op de banden', color: '#5F5E5A' }, min: 1, max: 45, ticks: { color: '#5F5E5A', stepSize: 5 }, grid: { color: 'rgba(0,0,0,0.04)' } },
-      y: { title: { display: true, text: 'Rondetijd (seconden)', color: '#5F5E5A' }, ticks: { color: '#5F5E5A', callback: v => v.toFixed(1) + 's' }, grid: { color: 'rgba(0,0,0,0.04)' }, min: 86.8, max: 92.5 }
+      y: { title: { display: true, text: 'Tijdverlies t.o.v. snelste ronde (s) — lager is sneller', color: '#5F5E5A' }, ticks: { color: '#5F5E5A', callback: v => (v > 0 ? '+' : '') + v.toFixed(1) + 's' }, grid: { color: 'rgba(0,0,0,0.04)' }, min: -0.3, max: 5.5 }
     }
   }
 });
